@@ -1,0 +1,47 @@
+version: "3"
+services:
+  redis:
+    image: redis
+    container_name: celery-redis
+    networks:
+      - slackproxy
+
+  celery:
+    build:
+      context: .
+      dockerfile: ./docker/celery/Dockerfile
+    image: registry.services/slack-proxy-celery:1.0
+    environment:
+      REDIS_HOST: "celery-redis:6379"
+    depends_on:
+      - redis
+    networks:
+      - slackproxy
+
+  gunicorn:
+    container_name: slack-proxy-app
+    build:
+      context: .
+      dockerfile: ./docker/gunicorn/Dockerfile
+    image: registry.services/slack-proxy-gunicorn:1.0
+    environment:
+      REDIS_HOST: "celery-redis:6379"
+    depends_on:
+      - redis
+    networks:
+      - slackproxy
+
+  nginx:
+    build:
+      context: .
+      dockerfile: ./docker/nginx/Dockerfile
+    image: registry.services/slack-proxy-nginx:1.0
+    depends_on:
+      - gunicorn
+    networks:
+      - slackproxy
+    ports:
+      - "80:80"
+
+networks:
+  slackproxy:
